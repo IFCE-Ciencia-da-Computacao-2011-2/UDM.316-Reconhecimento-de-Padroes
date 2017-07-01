@@ -5,3 +5,4 @@
 1. Obter base de dados: ```python scrap```
 1. Tratar os dados: ```Tratamento de dados 1.ipynb```
 1. Tratar os dados: ```Tratamento de dados 2.ipynb```
+1. Tratar os dados: ```Tratamento de dados 3 - Categorias.ipynb```
