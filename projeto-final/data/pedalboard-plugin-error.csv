@@ -1,13 +1,10 @@
 id,error
 7074,Unknown format: rar
-7083,Unknown format: g3a
+7942,'content-disposition'
 7975,Unknown format: jpg
 7976,Unknown format: jpg
 8313,Unknown format: rar
 8447,Unknown format: g5p
-8526,'content-disposition'
-8559,'content-disposition'
 9416,Unknown format: g5a
-9472,None: Max retries exceeded with url: /download.php?unit=G3&mode=download&ID=9472 (Caused by None)
 9592,"no element found: line 1, column 0"
 9876,Unknown format: rar
