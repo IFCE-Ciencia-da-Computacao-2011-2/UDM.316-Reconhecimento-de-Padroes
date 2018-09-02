@@ -1,1 +1,4 @@
 .ipynb_checkpoints
+projeto-final/code/__pycache__/*
+__pycache__
+projeto-final/venv

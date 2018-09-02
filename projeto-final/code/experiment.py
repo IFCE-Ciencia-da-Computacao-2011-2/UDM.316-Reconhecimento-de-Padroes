@@ -27,6 +27,7 @@ class Experiment(object):
         
         while self._recommend_condition(recommendation, current_iteration, minimum_iterations, maximum_iterations, score, size):
             recommendation |= pedalboard
+            #recommendation = self.rbm.gibbs_fixed(recommendation)
             recommendation = self.rbm.gibbs(recommendation)
 
             score_recommendation = self.score_sample(recommendation)
@@ -77,4 +78,5 @@ class Experiment(object):
         discover = 0 if self.len_of_pedalboard(test) == 0 else self.len_of_pedalboard(test & recommended) / self.len_of_pedalboard(test)
         total = 0 if self.len_of_pedalboard(original) == 0 else self.len_of_pedalboard(original & recommended) / self.len_of_pedalboard(original)
 
+        print(self.len_of_pedalboard(original), self.len_of_pedalboard(train), self.len_of_pedalboard(test))
         return preserve, discover, total

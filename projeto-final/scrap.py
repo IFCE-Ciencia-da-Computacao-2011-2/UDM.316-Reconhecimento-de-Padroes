@@ -32,7 +32,10 @@ class BlogSpider(scrapy.Spider):
             'uploader': column(6).strip(),
             'total_downloads': int(column(7)),
         }
-            
+
+# Rodar na versão mais nova
+#scrapy runspider scrap.py -o data/pedalboard-info.json
+'''
 from scrapy.crawler import CrawlerProcess
 
 process = CrawlerProcess({
@@ -45,3 +48,4 @@ process = CrawlerProcess({
 process.crawl(BlogSpider)
 process.start()
 process.stop()
+'''

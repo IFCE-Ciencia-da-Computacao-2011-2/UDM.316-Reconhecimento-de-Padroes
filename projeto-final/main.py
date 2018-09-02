@@ -72,7 +72,7 @@ def mensurate(rbm, pedalboards, plugins):
 
     for position, pedalboard_index in enumerate(pedalboards.index):
         pedalboard = pedalboards.iloc[position].copy()
-        train, test = split_pedalboard(pedalboard, plugins)
+        train, test = split_pedalboard(pedalboard, plugins, train_size=3/3)
 
         recommended = experiment.recommend(train, score=-1)
         results_train.loc[pedalboard_index[0]] = experiment.evaluate(recommended, train, test, pedalboard)
@@ -95,6 +95,19 @@ def mensurate(rbm, pedalboards, plugins):
 #print(experiment.evaluate(recommended, train, test, pedalboard))
 
 def process(total, verbose=False, RANDOM_STATE=None):
+    '''
+    rbm = generate_rbm(total, RANDOM_STATE, verbose)
+    pedalboards, plugins = read_data()
+
+    pedalboards_train, pedalboards_test = train_test_split(pedalboards, train_size=.8, random_state=RANDOM_STATE)
+    rbm.fit(pedalboards_train)
+    print('learned')
+
+    result_train = mensurate(rbm, pedalboards_train, plugins)
+    print(result_train.mean())
+    return
+    '''
+
     for i in range(30):
         print('Iteration', i)
         rbm = generate_rbm(total, RANDOM_STATE, verbose)
@@ -102,18 +115,20 @@ def process(total, verbose=False, RANDOM_STATE=None):
 
         pedalboards_train, pedalboards_test = train_test_split(pedalboards, train_size=.8, random_state=RANDOM_STATE)
         rbm.fit(pedalboards_train)
-        rbm.log.to_csv('results/{}/learning_{}.csv'.format(total, i))
+        rbm.log.to_csv('results/learn/{}/learning_{}.csv'.format(total, i))
         print('learned')
 
+        '''
         result_train = mensurate(rbm, pedalboards_train, plugins)
-        result_train.to_csv('results/{}/result_train_{}.csv'.format(total, i))
+        result_train.to_csv('results/4-2/{}/result_train_{}.csv'.format(total, i))
         print('Train:', result_train.mean())
 
         result_test = mensurate(rbm, pedalboards_test, plugins)
-        result_test.to_csv('results/{}/result_test_{}.csv'.format(total, i))
+        result_test.to_csv('results/4-2/{}/result_test_{}.csv'.format(total, i))
         print('Test:', result_test.mean())
+        '''
 
 if __name__ == '__main__':
     process(50, verbose=False, RANDOM_STATE=None)
     process(500, verbose=False, RANDOM_STATE=None)
-    process(5000, verbose=False, RANDOM_STATE=None)
+    process(50000, verbose=False, RANDOM_STATE=None)

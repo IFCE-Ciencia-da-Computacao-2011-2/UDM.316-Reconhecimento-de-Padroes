@@ -15,8 +15,6 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.special import expit  # logistic function
 
-from sklearn.base import BaseEstimator
-from sklearn.base import TransformerMixin
 from sklearn.externals.six.moves import xrange
 from sklearn.utils import check_array
 from sklearn.utils import check_random_state
@@ -28,78 +26,9 @@ from sklearn.utils.validation import check_is_fitted
 
 import pandas as pd
 
-class BernoulliRBM(BaseEstimator, TransformerMixin):
-    """Bernoulli Restricted Boltzmann Machine (RBM).
 
-    A Restricted Boltzmann Machine with binary visible units and
-    binary hidden units. Parameters are estimated using Stochastic Maximum
-    Likelihood (SML), also known as Persistent Contrastive Divergence (PCD)
-    [2].
+class RBM(object):
 
-    The time complexity of this implementation is ``O(d ** 2)`` assuming
-    d ~ n_features ~ n_components.
-
-    Read more in the :ref:`User Guide <rbm>`.
-
-    Parameters
-    ----------
-    n_components : int, optional
-        Number of binary hidden units.
-
-    learning_rate : float, optional
-        The learning rate for weight updates. It is *highly* recommended
-        to tune this hyper-parameter. Reasonable values are in the
-        10**[0., -3.] range.
-
-    batch_size : int, optional
-        Number of examples per minibatch.
-
-    n_iter : int, optional
-        Number of iterations/sweeps over the training dataset to perform
-        during training.
-
-    verbose : int, optional
-        The verbosity level. The default, zero, means silent mode.
-
-    random_state : integer or numpy.RandomState, optional
-        A random number generator instance to define the state of the
-        random permutations generator. If an integer is given, it fixes the
-        seed. Defaults to the global numpy random number generator.
-
-    Attributes
-    ----------
-    intercept_hidden_ : array-like, shape (n_components,)
-        Biases of the hidden units.
-
-    intercept_visible_ : array-like, shape (n_features,)
-        Biases of the visible units.
-
-    components_ : array-like, shape (n_components, n_features)
-        Weight matrix, where n_features in the number of
-        visible units and n_components is the number of hidden units.
-
-    Examples
-    --------
-
-    >>> import numpy as np
-    >>> from sklearn.neural_network import BernoulliRBM
-    >>> X = np.array([[0, 0, 0], [0, 1, 1], [1, 0, 1], [1, 1, 1]])
-    >>> model = BernoulliRBM(n_components=2)
-    >>> model.fit(X)
-    BernoulliRBM(batch_size=10, learning_rate=0.1, n_components=2, n_iter=10,
-           random_state=None, verbose=0)
-
-    References
-    ----------
-
-    [1] Hinton, G. E., Osindero, S. and Teh, Y. A fast learning algorithm for
-        deep belief nets. Neural Computation 18, pp 1527-1554.
-        http://www.cs.toronto.edu/~hinton/absps/fastnc.pdf
-
-    [2] Tieleman, T. Training Restricted Boltzmann Machines using
-        Approximations to the Likelihood Gradient. International Conference
-        on Machine Learning (ICML) 2008
-    """
     def __init__(self, n_components=256, learning_rate=0.1, batch_size=10,
                  n_iter=10, verbose=0, random_state=None):
         self.n_components = n_components
@@ -109,6 +38,13 @@ class BernoulliRBM(BaseEstimator, TransformerMixin):
         self.verbose = verbose
         self.random_state = random_state
         self.log = pd.DataFrame(columns=('pseudo-likelihood', 'time'))
+
+        self.n_hiddens = n_components
+
+        self.weight_visible = None
+        self.weight_hidden = None
+        self.hidden = None
+        self.visible = None
 
     def transform(self, X):
         """Compute the hidden layer activation probabilities, P(h=1|v=X).
@@ -123,9 +59,6 @@ class BernoulliRBM(BaseEstimator, TransformerMixin):
         h : array, shape (n_samples, n_components)
             Latent representations of the data.
         """
-        check_is_fitted(self, "components_")
-
-        X = check_array(X, accept_sparse='csr', dtype=np.float64)
         return self._mean_hiddens(X)
 
     def _mean_hiddens(self, v):
@@ -220,32 +153,6 @@ class BernoulliRBM(BaseEstimator, TransformerMixin):
             self.random_state_ = check_random_state(self.random_state)
         h_ = self._sample_hiddens(v, self.random_state_)
         v_ = self._sample_visibles(h_, self.random_state_)
-
-        return v_
-
-    def gibbs_fixed(self, v):
-        """Perform one Gibbs sampling step fixing the visible variables
-
-        Parameters
-        ----------
-        v : array-like, shape (n_samples, n_features)
-            Values of the visible layer to start from.
-
-        Returns
-        -------
-        v_new : array-like, shape (n_samples, n_features)
-            Values of the visible layer after one Gibbs step.
-        """
-        check_is_fitted(self, "components_")
-        if not hasattr(self, "random_state_"):
-            self.random_state_ = check_random_state(self.random_state)
-        h_ = self._sample_hiddens(v, self.random_state_)
-
-        original_visibles = self.intercept_visible_[v]
-        self.intercept_visible_[v] = 1
-
-        v_ = self._sample_visibles(h_, self.random_state_)
-        self.intercept_visible_[v] = original_visibles
 
         return v_
 
@@ -395,3 +302,81 @@ class BernoulliRBM(BaseEstimator, TransformerMixin):
             begin = end
 
         return self
+
+
+
+    def novo_fit(self, X, y=None):
+        """
+        Fit (treinar) the model to the data X.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix} shape (n_samples, n_features) Training data.
+                                              (individuos, nós)
+        Returns
+        -------
+        self : BernoulliRBM
+            The fitted model.
+        """
+        rng = check_random_state(self.random_state)
+
+        n_samples = X.shape[0]
+        n_visibles = X.shape[1]
+
+        self.weight_visible = np.random.uniform(0, 1, n_visibles)
+        self.weight_hidden = np.random.uniform(0, 1, self.n_hiddens)
+
+        self.intercept_hidden_ = np.zeros(self.n_hiddens, )
+        self.intercept_visible_ = np.zeros(n_visibles, )
+        self.h_samples_ = np.zeros((self.batch_size, self.n_hiddens))
+
+        n_batches = int(np.ceil(float(n_samples) / self.batch_size))
+        batch_slices = list(gen_even_slices(n_batches * self.batch_size,
+                                            n_batches, n_samples))
+
+        begin = time.time()
+        for iteration in xrange(1, self.n_iter + 1):
+            for batch_slice in batch_slices:
+                self._fit(X[batch_slice], rng)
+
+            end = time.time()
+            self.log.loc[iteration] = [self.score_samples(X).mean(), end - begin]
+            print("[%s] Iteration %d, pseudo-likelihood = %.2f,"
+                  " time = %.2fs"
+                  % (type(self).__name__, iteration,
+                     self.score_samples(X).mean(), end - begin))
+            begin = end
+
+        return self
+
+    def _novo_fit(self, v_pos, rng):
+        """Inner fit for one mini-batch.
+
+        Adjust the parameters to maximize the likelihood of v using
+        Stochastic Maximum Likelihood (SML).
+
+        Parameters
+        ----------
+        v_pos : array-like, shape (n_samples, n_features)
+            The data to use for training.
+
+        rng : RandomState
+            Random number generator to use for sampling.
+        """
+        h_pos = self._mean_hiddens(v_pos)
+        v_neg = self._sample_visibles(self.h_samples_, rng)
+        h_neg = self._mean_hiddens(v_neg)
+
+        lr = float(self.learning_rate) / v_pos.shape[0]
+
+        update = safe_sparse_dot(v_pos.T, h_pos, dense_output=True).T
+        update -= np.dot(h_neg.T, v_neg)
+
+        self.components_ += lr * update
+        self.intercept_hidden_ += lr * (h_pos.sum(axis=0) - h_neg.sum(axis=0))
+        self.intercept_visible_ += lr * (np.asarray(
+                                         v_pos.sum(axis=0)).squeeze() -
+                                         v_neg.sum(axis=0))
+
+        h_neg[rng.uniform(size=h_neg.shape) < h_neg] = 1.0  # sample binomial
+        self.h_samples_ = np.floor(h_neg, h_neg)
